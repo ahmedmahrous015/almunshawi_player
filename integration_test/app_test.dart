@@ -145,10 +145,6 @@ void main() {
     expect(cubit.state.currentIndex, isNotNull);
 
     // Start from a known state.
-    if (cubit.state.isRepeatOne) await cubit.toggleRepeatOne();
-    while (cubit.state.playbackSpeed != 1.0) {
-      await cubit.cyclePlaybackSpeed();
-    }
     cubit.stopSleepTimer();
 
     // ── Performance: scrolling the surah list ─────────────────────────────
@@ -275,19 +271,6 @@ void main() {
       greaterThanOrEqualTo(const Duration(seconds: 8)),
     );
 
-    // ── Speed cycles and is applied to the player ─────────────────────────
-    await tester.tap(find.textContaining('السرعة'));
-    await wait(tester, const Duration(milliseconds: 500));
-    expect(cubit.state.playbackSpeed, 1.25);
-    expect(cubit.globalAudioPlayer.speed, 1.25);
-    expect(find.text('السرعة 1.25x'), findsOneWidget);
-    for (var i = 0; i < 3; i++) {
-      await tester.tap(find.textContaining('السرعة'));
-      await wait(tester, const Duration(milliseconds: 300));
-    }
-    expect(cubit.state.playbackSpeed, 1.0);
-    expect(cubit.globalAudioPlayer.speed, 1.0);
-
     // ── Position is persisted ─────────────────────────────────────────────
     await cubit.seek(const Duration(minutes: 2, seconds: 30));
     await wait(tester, const Duration(milliseconds: 500));
@@ -312,24 +295,6 @@ void main() {
     await seekNearEnd(tester, cubit);
     await waitAudible(tester, cubit, 18, 'auto-advance after completion');
     expect(cubit.audioHandler.mediaItem.value?.title, 'سورة مريم');
-
-    // ── Repeat restarts the same surah ────────────────────────────────────
-    await tester.tap(find.text('تكرار السورة'));
-    await wait(tester, const Duration(milliseconds: 300));
-    expect(cubit.state.isRepeatOne, isTrue);
-    await seekNearEnd(tester, cubit);
-    await wait(tester, const Duration(seconds: 1));
-    await pumpUntil(
-      tester,
-      () =>
-          cubit.state.currentIndex == 18 &&
-          cubit.state.isPlaying &&
-          cubit.state.position < const Duration(seconds: 5),
-      reason: 'repeat restarts Maryam',
-    );
-    await tester.tap(find.text('تكرار السورة'));
-    await wait(tester, const Duration(milliseconds: 300));
-    expect(cubit.state.isRepeatOne, isFalse);
 
     // ── Sleep timer: end of current surah ─────────────────────────────────
     await tester.tap(find.byTooltip('مؤقت النوم'));

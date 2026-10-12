@@ -93,9 +93,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> seek(Duration position) => _player.seek(position);
 
   @override
-  Future<void> setSpeed(double speed) => _player.setSpeed(speed);
-
-  @override
   Future<void> stop() async {
     // just_audio's stop() reverts the reported position to the last position
     // the platform sent (where playback last started), while pause() keeps

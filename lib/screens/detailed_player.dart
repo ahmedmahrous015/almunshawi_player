@@ -94,8 +94,6 @@ class _DetailedPlayerScreenState extends State<DetailedPlayerScreen>
                           _buildSlider(quranCubit),
                           const SizedBox(height: 30),
                           _buildControls(quranCubit),
-                          const SizedBox(height: 24),
-                          _buildExtraControls(quranCubit),
                           const SizedBox(height: 40),
                         ],
                       ),
@@ -449,94 +447,6 @@ class _DetailedPlayerScreenState extends State<DetailedPlayerScreen>
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildExtraControls(QuranCubit cubit) {
-    return BlocBuilder<QuranCubit, QuranState>(
-      buildWhen: (previous, current) =>
-          previous.isRepeatOne != current.isRepeatOne ||
-          previous.playbackSpeed != current.playbackSpeed,
-      builder: (context, state) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _PillButton(
-              icon: Icons.repeat_one_rounded,
-              label: 'تكرار السورة',
-              isActive: state.isRepeatOne,
-              onTap: cubit.toggleRepeatOne,
-            ),
-            const SizedBox(width: 12),
-            _PillButton(
-              icon: Icons.speed_rounded,
-              label: 'السرعة ${_formatSpeed(state.playbackSpeed)}x',
-              isActive: state.playbackSpeed != 1.0,
-              onTap: cubit.cyclePlaybackSpeed,
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  static String _formatSpeed(double speed) {
-    final text = speed.toStringAsFixed(2);
-    return text.replaceFirst(RegExp(r'\.?0+$'), '');
-  }
-}
-
-class _PillButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _PillButton({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isActive ? Colors.white : Colors.white54;
-    return Semantics(
-      button: true,
-      toggled: isActive,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive
-                ? AppColors.accentBrown.withValues(alpha: 0.85)
-                : Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isActive ? AppColors.lightBrown : Colors.white12,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 18, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

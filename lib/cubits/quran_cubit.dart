@@ -70,14 +70,9 @@ class QuranCubit extends Cubit<QuranState> {
       (state.currentIndex! - 1 + state.audioFiles.length) %
       state.audioFiles.length;
 
-  /// Real (wall-clock) time left in the current surah at the current speed.
-  Duration _surahTimeLeft(Duration position, Duration duration) {
-    if (duration <= position) return Duration.zero;
-    final left = duration - position;
-    return Duration(
-      milliseconds: (left.inMilliseconds / state.playbackSpeed).round(),
-    );
-  }
+  /// Time left in the current surah.
+  Duration _surahTimeLeft(Duration position, Duration duration) =>
+      duration > position ? duration - position : Duration.zero;
 
   void _setupAudioListeners() {
     _stateSub = globalAudioPlayer.playerStateStream.listen((playerState) {
@@ -148,10 +143,6 @@ class QuranCubit extends Cubit<QuranState> {
       await _loadIndex(_nextIndex, autoplay: false);
       return;
     }
-    if (state.isRepeatOne) {
-      await _loadIndex(state.currentIndex!, autoplay: true);
-      return;
-    }
     playNext();
   }
 
@@ -189,29 +180,17 @@ class QuranCubit extends Cubit<QuranState> {
       final prefs = await _sharedPrefs;
       final savedIndex = prefs.getInt(AppKeys.lastIndex);
       final savedSeconds = prefs.getInt(AppKeys.lastSeconds) ?? 0;
-      final isRepeatOne = prefs.getBool(AppKeys.repeatOne) ?? false;
-      final savedSpeed = prefs.getDouble(AppKeys.playbackSpeed) ?? 1.0;
-      final speed = AppConfig.playbackSpeeds.contains(savedSpeed)
-          ? savedSpeed
-          : 1.0;
+      // Earlier versions had repeat and speed options; drop their settings
+      // so nobody is left on a non-default speed they can no longer change.
+      await prefs.remove(AppKeys.legacyRepeatOne);
+      await prefs.remove(AppKeys.legacyPlaybackSpeed);
 
       final hasValidHistory =
           savedIndex != null &&
           savedIndex >= 0 &&
           savedIndex < audioPaths.length;
 
-      emit(
-        state.copyWith(
-          audioFiles: audioPaths,
-          isLoading: false,
-          isRepeatOne: isRepeatOne,
-          playbackSpeed: speed,
-        ),
-      );
-
-      if (speed != 1.0) {
-        await audioHandler.setSpeed(speed);
-      }
+      emit(state.copyWith(audioFiles: audioPaths, isLoading: false));
 
       await _loadIndex(
         hasValidHistory ? savedIndex : 0,
@@ -368,35 +347,6 @@ class QuranCubit extends Cubit<QuranState> {
   void seekBackward10() {
     final newPosition = state.position - const Duration(seconds: 10);
     seek(newPosition > Duration.zero ? newPosition : Duration.zero);
-  }
-
-  Future<void> toggleRepeatOne() async {
-    final value = !state.isRepeatOne;
-    emit(state.copyWith(isRepeatOne: value));
-    final prefs = await _sharedPrefs;
-    await prefs.setBool(AppKeys.repeatOne, value);
-  }
-
-  Future<void> cyclePlaybackSpeed() async {
-    const speeds = AppConfig.playbackSpeeds;
-    final current = speeds.indexOf(state.playbackSpeed);
-    final next = speeds[(current + 1) % speeds.length];
-
-    emit(state.copyWith(playbackSpeed: next));
-    if (state.isSleepTimerEndOfSurah) {
-      emit(
-        state.copyWith(
-          sleepTimerRemaining: _surahTimeLeft(state.position, state.duration),
-        ),
-      );
-    }
-    try {
-      await audioHandler.setSpeed(next);
-      final prefs = await _sharedPrefs;
-      await prefs.setDouble(AppKeys.playbackSpeed, next);
-    } catch (e) {
-      debugPrint("Error setting speed: $e");
-    }
   }
 
   void _updateSystemNotification() {

@@ -24,13 +24,13 @@ class AppStrings {
 class AppKeys {
   static const lastIndex = 'last_quran_index';
   static const lastSeconds = 'last_quran_seconds';
-  static const repeatOne = 'repeat_one';
-  static const playbackSpeed = 'playback_speed';
+
+  /// Settings of the removed repeat/speed features; cleared on startup.
+  static const legacyRepeatOne = 'repeat_one';
+  static const legacyPlaybackSpeed = 'playback_speed';
 }
 
 class AppConfig {
-  static const playbackSpeeds = [0.75, 1.0, 1.25, 1.5];
-
   /// Volume fades out over this window before the sleep timer pauses playback.
   static const sleepFadeDuration = Duration(seconds: 10);
 }

@@ -10,8 +10,6 @@ class QuranState {
   final String searchQuery;
   final Duration? sleepTimerRemaining;
   final bool isSleepTimerEndOfSurah;
-  final bool isRepeatOne;
-  final double playbackSpeed;
 
   QuranState({
     required this.audioFiles,
@@ -23,8 +21,6 @@ class QuranState {
     this.searchQuery = '',
     this.sleepTimerRemaining,
     this.isSleepTimerEndOfSurah = false,
-    this.isRepeatOne = false,
-    this.playbackSpeed = 1.0,
   });
 
   QuranState copyWith({
@@ -38,8 +34,6 @@ class QuranState {
     Duration? sleepTimerRemaining,
     bool? isSleepTimerEndOfSurah,
     bool clearSleepTimer = false,
-    bool? isRepeatOne,
-    double? playbackSpeed,
   }) {
     return QuranState(
       audioFiles: audioFiles ?? this.audioFiles,
@@ -57,8 +51,6 @@ class QuranState {
       isSleepTimerEndOfSurah: clearSleepTimer
           ? false
           : (isSleepTimerEndOfSurah ?? this.isSleepTimerEndOfSurah),
-      isRepeatOne: isRepeatOne ?? this.isRepeatOne,
-      playbackSpeed: playbackSpeed ?? this.playbackSpeed,
     );
   }
 
@@ -75,9 +67,7 @@ class QuranState {
           position == other.position &&
           searchQuery == other.searchQuery &&
           sleepTimerRemaining == other.sleepTimerRemaining &&
-          isSleepTimerEndOfSurah == other.isSleepTimerEndOfSurah &&
-          isRepeatOne == other.isRepeatOne &&
-          playbackSpeed == other.playbackSpeed;
+          isSleepTimerEndOfSurah == other.isSleepTimerEndOfSurah;
 
   @override
   int get hashCode => Object.hash(
@@ -90,7 +80,5 @@ class QuranState {
     searchQuery,
     sleepTimerRemaining,
     isSleepTimerEndOfSurah,
-    isRepeatOne,
-    playbackSpeed,
   );
 }

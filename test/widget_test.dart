@@ -112,26 +112,6 @@ void main() {
     });
   });
 
-  group('QuranState playback options', () {
-    test('defaults and copyWith for repeat and speed', () {
-      final state = QuranState(
-        audioFiles: const [],
-        isLoading: false,
-        isPlaying: false,
-        duration: Duration.zero,
-        position: Duration.zero,
-      );
-      expect(state.isRepeatOne, isFalse);
-      expect(state.playbackSpeed, 1.0);
-
-      final updated = state.copyWith(isRepeatOne: true, playbackSpeed: 1.25);
-      expect(updated.isRepeatOne, isTrue);
-      expect(updated.playbackSpeed, 1.25);
-      expect(updated, isNot(equals(state)));
-      expect(updated.copyWith(), equals(updated));
-    });
-  });
-
   group('formatDuration Tests', () {
     test('formats minutes, hours and clamps negatives', () {
       expect(formatDuration(const Duration(seconds: 65)), '01:05');
