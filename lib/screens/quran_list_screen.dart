@@ -5,6 +5,7 @@ import '../cubits/quran_state.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
 import '../utils/route_observer.dart';
+import '../widgets/centering_scroll_controller.dart';
 import 'detailed_player.dart';
 
 class QuranListScreen extends StatefulWidget {
@@ -16,8 +17,12 @@ class QuranListScreen extends StatefulWidget {
 }
 
 class _QuranListScreenState extends State<QuranListScreen> with RouteAware {
-  late final ScrollController _scrollController;
+  late final CenteringScrollController _scrollController;
   final GlobalKey _miniPlayerKey = GlobalKey();
+
+  /// Set when the next build of the full list should open centered on the
+  /// playing surah (first launch, after loading, after clearing the search).
+  bool _centerOnNextBuild = true;
 
   static const _listPadding = EdgeInsets.only(
     left: 16,
@@ -29,8 +34,7 @@ class _QuranListScreenState extends State<QuranListScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _centerActiveTrackAfterLayout();
+    _scrollController = CenteringScrollController();
   }
 
   @override
@@ -77,57 +81,73 @@ class _QuranListScreenState extends State<QuranListScreen> with RouteAware {
     );
   }
 
-  /// Centers the playing surah in the visible part of the list (above the
-  /// mini player). Every tile has the same height, so its offset is exact.
-  /// Returns false if the list isn't laid out yet.
-  bool _centerActiveTrack({bool animate = false}) {
-    final state = context.read<QuranCubit>().state;
+  /// Builds the offset that centers the playing surah in the visible part of
+  /// the list (above the mini player). Every tile has the same height, so the
+  /// offset follows from the list's total extent.
+  ScrollTargetBuilder _centerTargetFor(QuranState state) {
     final index = state.currentIndex;
-    if (index == null || state.searchQuery.trim().isNotEmpty) return true;
-    if (!_scrollController.hasClients) return false;
-
-    final position = _scrollController.position;
-    if (!position.hasContentDimensions || !position.hasViewportDimension) {
-      return false;
-    }
-    if (position.maxScrollExtent <= 0) return true; // Everything fits.
-
-    final tileExtent =
-        (position.maxScrollExtent +
-            position.viewportDimension -
-            _listPadding.vertical) /
-        state.audioFiles.length;
-    final miniPlayerHeight = _miniPlayerKey.currentContext?.size?.height ?? 70;
+    final count = state.audioFiles.length;
+    final searching = state.searchQuery.trim().isNotEmpty;
+    // The mini player may not be laid out yet (first build).
+    final miniPlayerBox =
+        _miniPlayerKey.currentContext?.findRenderObject() as RenderBox?;
+    final miniPlayerHeight = (miniPlayerBox?.hasSize ?? false)
+        ? miniPlayerBox!.size.height
+        : 70.0;
     final coveredByMiniPlayer =
         miniPlayerHeight + 16 + MediaQuery.paddingOf(context).bottom;
-    final visibleHeight = position.viewportDimension - coveredByMiniPlayer;
 
-    final target =
-        (_listPadding.top +
-                index * tileExtent +
-                tileExtent / 2 -
-                visibleHeight / 2)
-            .clamp(position.minScrollExtent, position.maxScrollExtent);
+    return (maxScrollExtent, viewportDimension) {
+      if (index == null || searching || count == 0) return null;
+      if (maxScrollExtent <= 0) return null; // Everything fits.
+      final tileExtent =
+          (maxScrollExtent + viewportDimension - _listPadding.vertical) / count;
+      final visibleHeight = viewportDimension - coveredByMiniPlayer;
+      return _listPadding.top +
+          index * tileExtent +
+          tileExtent / 2 -
+          visibleHeight / 2;
+    };
+  }
+
+  /// Centers the playing surah right away (the list must be laid out).
+  void _centerActiveTrack({bool animate = false}) {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (!position.hasContentDimensions || !position.hasViewportDimension) {
+      return;
+    }
+    final target = _centerTargetFor(context.read<QuranCubit>().state)(
+      position.maxScrollExtent,
+      position.viewportDimension,
+    );
+    if (target == null) return;
+    final clamped = target.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
 
     if (animate) {
       _scrollController.animateTo(
-        target,
+        clamped,
         duration: const Duration(milliseconds: 450),
         curve: Curves.easeInOutCubic,
       );
     } else {
-      _scrollController.jumpTo(target);
+      _scrollController.jumpTo(clamped);
     }
-    return true;
   }
 
-  /// Jumps to the playing surah once the list has been laid out.
-  void _centerActiveTrackAfterLayout([int attempt = 0]) {
+  /// Opens the full list centered on the playing surah: the offset is applied
+  /// during its next layout, so the top of the list never flashes first.
+  void _scheduleCenterOnLayout(QuranState state) {
+    _centerOnNextBuild = false;
+    _scrollController.scrollOnNextLayout(_centerTargetFor(state));
+    // Fallback in case no layout of the list follows.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!_centerActiveTrack() && attempt < 30) {
-        _centerActiveTrackAfterLayout(attempt + 1);
-      }
+      if (!mounted || !_scrollController.hasPendingTarget) return;
+      _scrollController.cancelPendingTarget();
+      _centerActiveTrack();
     });
   }
 
@@ -164,7 +184,7 @@ class _QuranListScreenState extends State<QuranListScreen> with RouteAware {
           BlocListener<QuranCubit, QuranState>(
             listenWhen: (previous, current) =>
                 previous.isLoading && !current.isLoading,
-            listener: (context, state) => _centerActiveTrackAfterLayout(),
+            listener: (context, state) => _centerOnNextBuild = true,
           ),
           BlocListener<QuranCubit, QuranState>(
             listenWhen: (previous, current) =>
@@ -185,7 +205,7 @@ class _QuranListScreenState extends State<QuranListScreen> with RouteAware {
                 previous.searchQuery != current.searchQuery,
             listener: (context, state) {
               if (state.searchQuery.trim().isEmpty) {
-                _centerActiveTrackAfterLayout();
+                _centerOnNextBuild = true;
               } else if (_scrollController.hasClients) {
                 _scrollController.jumpTo(0);
               }
@@ -242,6 +262,10 @@ class _QuranListScreenState extends State<QuranListScreen> with RouteAware {
                             ),
                           ),
                         );
+                      }
+
+                      if (_centerOnNextBuild && query.trim().isEmpty) {
+                        _scheduleCenterOnLayout(state);
                       }
 
                       return CustomScrollView(
