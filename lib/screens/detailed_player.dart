@@ -5,6 +5,7 @@ import '../cubits/quran_state.dart';
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
 import '../widgets/sleep_timer_sheet.dart';
+import '../widgets/vinyl_record.dart';
 
 class DetailedPlayerScreen extends StatefulWidget {
   final String imagePath;
@@ -228,33 +229,15 @@ class _DetailedPlayerScreenState extends State<DetailedPlayerScreen>
                 ),
               ),
             ),
-            // The boundary sits inside the rotation, so the clipped image is
-            // painted once and each frame only the rotation angle changes.
-            RotationTransition(
-              turns: _rotationController,
-              child: Hero(
-                tag: 'player_album_art',
-                child: RepaintBoundary(
-                  child: ClipOval(
-                    child: Image.asset(
-                      widget.imagePath,
-                      width: size,
-                      height: size,
-                      cacheWidth: 600,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.black45,
-                          child: const Icon(
-                            Icons.menu_book_rounded,
-                            size: 80,
-                            color: Colors.white54,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
+            BlocBuilder<QuranCubit, QuranState>(
+              buildWhen: (previous, current) =>
+                  previous.isPlaying != current.isPlaying,
+              builder: (context, state) => VinylRecord(
+                imagePath: widget.imagePath,
+                size: size,
+                turns: _rotationController,
+                isPlaying: state.isPlaying,
+                heroTag: 'player_album_art',
               ),
             ),
           ],
